@@ -35,6 +35,8 @@ class NodeTest {
     fun testNode() {
         val node = Node("192.168.2.246")
         val topNumber = node.getBlockTopNumber()
+        val n = node.getBlockByNumber(303590L)
+        println(n)
         assert(topNumber > 0)
     }
 
