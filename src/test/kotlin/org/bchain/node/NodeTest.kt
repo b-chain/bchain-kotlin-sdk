@@ -33,11 +33,15 @@ class NodeTest {
 
     @Test
     fun testNode() {
-        val node = Node("192.168.2.246")
+        val node = Node("192.168.2.246", privateKey = "1614b6882d3294498f0164e903c174d20225555b05ff09155fa88afd05c2ed3", debugInfo = true)
         val topNumber = node.getBlockTopNumber()
         val n = node.getBlockByNumber(303590L)
         println(n)
         assert(topNumber > 0)
+        println(node.bchainAddress)
+        println(node.getBcBalance("0xc5f0f1fcbd8be1c0f1b59650f7e8e939d9145944"))
+        val hash = node.transferBc("0xf7210cdd6533f4812de1149ee7d1d22c7470f0b3", 1.toBigDecimal())
+        println(hash)
     }
 
 }

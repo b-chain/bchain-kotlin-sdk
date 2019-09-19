@@ -71,7 +71,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'org.bchain.node'
             artifactId = 'bchain-node'
-            version = '1.0.0'
+            version = '1.0.1'
             from components.java
             artifact sourcesJar
         }

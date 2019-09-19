@@ -31,6 +31,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         const val bcContractAddress = "0xb78f12Cb3924607A8BC6a66799e159E3459097e9"
         const val bcDecimalScale = 8
         val bcDecimal: BigDecimal = BigDecimal.TEN.pow(bcDecimalScale)
+        val bigIntegerTwo = 2.toBigInteger()
     }
 
     private val messagePacker by lazy { MessagePack.newDefaultBufferPacker() }
@@ -130,7 +131,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         val data = mapOf(
                 "H".stringValue() to TxHeader(nonce).valueMap(),
                 "Acts".stringValue() to actions.map { it.valueMap() }.arrayValue(),
-                "V".stringValue() to (v().toInt().toBigInteger() + 35.toBigInteger() + chainId * BigInteger.TEN).bigintValue(),
+                "V".stringValue() to (v().toInt().toBigInteger() + 35.toBigInteger() + chainId * bigIntegerTwo).bigintValue(),
                 "R".stringValue() to r().bigintValue(),
                 "S".stringValue() to s().bigintValue()).mapValue()
         packValue(mapOf("Data".stringValue() to data).mapValue())
