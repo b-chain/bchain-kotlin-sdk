@@ -53,10 +53,10 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    implementation 'com.squareup.okhttp3:okhttp:4.2.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.2.2'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.62'
-    implementation 'org.msgpack:msgpack-core:0.8.17'
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.11.1'
+    implementation 'org.msgpack:msgpack-core:0.8.18'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.13.0'
     implementation 'net.consensys.cava:cava-crypto:0.6.0'
     testImplementation 'junit:junit:4.13-beta-3'
 }
@@ -71,7 +71,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'org.bchain.node'
             artifactId = 'bchain-node'
-            version = '1.0.1'
+            version = '1.1.0'
             from components.java
             artifact sourcesJar
         }

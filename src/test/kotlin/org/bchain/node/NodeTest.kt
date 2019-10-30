@@ -33,15 +33,36 @@ class NodeTest {
 
     @Test
     fun testNode() {
-        val node = Node("192.168.2.246", privateKey = "1614b6882d3294498f0164e903c174d20225555b05ff09155fa88afd05c2ed3", debugInfo = true)
+        val node = Node("127.0.0.1", privateKey = "1614b6882d3294498f0164e903c174d20225555b05ff09155fa88afd05c2ed3", debugInfo = true)
         val topNumber = node.getBlockTopNumber()
-        val n = node.getBlockByNumber(303590L)
-        println(n)
+        val n = node.getBlockByNumber(304644)
+        val d = n.transactions.first().actions.first().parameter.arguments.first().addressValue()
+        println(d)
         assert(topNumber > 0)
-        println(node.bchainAddress)
-        println(node.getBcBalance("0xc5f0f1fcbd8be1c0f1b59650f7e8e939d9145944"))
-        val hash = node.transferBc("0xf7210cdd6533f4812de1149ee7d1d22c7470f0b3", 1.toBigDecimal())
-        println(hash)
     }
 
+    @Test
+    fun testCreateContract() {
+        val node = Node("192.168.2.246", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
+        val bytes = NodeTest::class.java.getResourceAsStream("/props.wasm").use { it.readBytes() }
+        val result = node.createWasamContract(bytes)
+        // 0xf238256a9fc1a599748f2de5d30c18c0f55c8359a4a62d43d4562801ffbbad72
+        println("create contract: $result")
+    }
+
+    @Test
+    fun testPropertyContract() {
+        val hash = "0xf238256a9fc1a599748f2de5d30c18c0f55c8359a4a62d43d4562801ffbbad72"
+        val propertyContract = "0x783719d53232f53570a63ea41da4be1669b4a2fd"
+        val node = Node("127.0.0.1", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
+        val info = node.getTransactionReceiptByHash(hash)
+        assert(info.contractAddress.first() == propertyContract)
+        val propertyName = "test"
+        val kingContract = "0xf053a7a6d62a8b1120e7c9a6177d411f9f3ffaac"
+        val helper = PropertyHelper(propertyContract, node)
+        // helper.buyByBc(propertyName, 0.1.toBigDecimal())
+        assert(helper.hasProperty(propertyName))
+        assert(!helper.hasProperty("none"))
+    }
+    
 }

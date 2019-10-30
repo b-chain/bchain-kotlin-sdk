@@ -29,6 +29,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         }
 
         const val bcContractAddress = "0xb78f12Cb3924607A8BC6a66799e159E3459097e9"
+        const val systemContractAddress = "0x2ba8A6318fb0390e8693af78c8086C086D923A96"
         const val bcDecimalScale = 8
         val bcDecimal: BigDecimal = BigDecimal.TEN.pow(bcDecimalScale)
         val bigIntegerTwo = 2.toBigInteger()
@@ -55,6 +56,12 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         yBytes.copy()
         val hash = bytes.sha3()
         bchainAddress = hash.toHex(offset = hash.size - 20, len = 20)
+    }
+
+    fun createWasamContract(content: ByteArray, fee: BigDecimal = BigDecimal.ZERO, nonce: Long = -1, chainId: BigInteger = BigInteger.ONE): String {
+        val actions = mutableListOf(systemContractAddress to TxParameter.createContract(Contract("wasmre.WasmRE", content)))
+        if (fee > BigDecimal.ZERO) actions.add(0, bcContractAddress to TxParameter.bcTransferFee(toBcInteger(fee)))
+        return transfer(*actions.toTypedArray(), nonce = nonce, chainId = chainId)
     }
 
     fun transferBc(toAddress: String,

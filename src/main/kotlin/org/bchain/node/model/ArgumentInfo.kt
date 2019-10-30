@@ -6,6 +6,7 @@ import org.bchain.node.serializer.Base64ByteArraySerializer
 import org.bchain.node.toHex
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.charset.Charset
 
 @Serializable
 data class ArgumentInfo(val type: String, @SerialName("val") @Serializable(Base64ByteArraySerializer::class) val valueBytes: ByteArray) {
@@ -14,6 +15,12 @@ data class ArgumentInfo(val type: String, @SerialName("val") @Serializable(Base6
         val needType = "address"
         if (type != needType) throw NumberFormatException("$type is not equal $needType")
         return valueBytes.toHex()
+    }
+
+    fun stringValue(charset: Charset = Charsets.UTF_8): String {
+        val needType = "address"
+        if (type != needType) throw NumberFormatException("$type is not equal $needType")
+        return valueBytes.toString(charset)
     }
 
     fun int32(): Int {
