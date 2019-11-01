@@ -69,13 +69,19 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
                            memo: String = "",
                            fee: BigDecimal = BigDecimal.ZERO,
                            nonce: Long = -1,
-                           chainId: BigInteger = BigInteger.ONE): String {
-        if (memo.toByteArray().size >= 32) throw InvalidParameterException("memo must < 32 bytes.")
-        if (value <= BigDecimal.ZERO) throw InvalidParameterException("value must > 0.")
+                           chainId: BigInteger = BigInteger.ONE) = multipleTransferBc(BcTransferParameter(toAddress, value, memo), fee = fee, nonce = nonce, chainId = chainId)
+
+    fun multipleTransferBc(vararg params: BcTransferParameter, fee: BigDecimal = BigDecimal.ZERO, nonce: Long = -1, chainId: BigInteger = BigInteger.ONE): String {
         if (fee < BigDecimal.ZERO) throw InvalidParameterException("fee must >= 0.")
-        val actions = mutableListOf(bcContractAddress to TxParameter.bcTransfer(toAddress, toBcInteger(value), memo))
-        if (fee > BigDecimal.ZERO) actions.add(0, bcContractAddress to TxParameter.bcTransferFee(toBcInteger(fee)))
-        return transfer(*actions.toTypedArray(), nonce = nonce, chainId = chainId)
+        if (params.isEmpty()) throw InvalidParameterException("no params")
+        val actions = params.map {
+            if (it.toAddress.isBlank()) throw InvalidParameterException("target address cannot be blank.")
+            if (it.memo.toByteArray().size >= 32) throw InvalidParameterException("memo must < 32 bytes.")
+            if (it.amount <= BigDecimal.ZERO) throw InvalidParameterException("value must > 0.")
+            bcContractAddress to TxParameter.bcTransfer(it.toAddress, toBcInteger(it.amount), it.memo)
+        }
+        val array = (if (fee > BigDecimal.ZERO) listOf(bcContractAddress to TxParameter.bcTransferFee(toBcInteger(fee))).plus(actions) else actions).toTypedArray()
+        return transfer(*array, nonce = nonce, chainId = chainId)
     }
 
     fun transfer(vararg actions: Pair<String, TxParameter>,
@@ -158,5 +164,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
     private fun ByteArray.signHashed(pk: SECP256K1.KeyPair = keyPair) = SECP256K1.signHashed(this, pk)
     private fun ByteArray.sha3() = Hash.keccak256(this)
     private fun Long.toBlockNumber() = if (this >= 0) toHex() else "latest"
+
+    data class BcTransferParameter(val toAddress: String, val amount: BigDecimal, val memo: String)
 
 }
