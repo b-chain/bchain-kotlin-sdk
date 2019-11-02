@@ -44,7 +44,8 @@ class NodeTest {
         assert(topNumber > 0)
         val bc = node.getBcBalance()
         println("${node.bchainAddress}:$bc")
-        val test = node.getTransactionByHash("0x19c55de70d527a5c19dfcc3c07d991cdaf07fe52301a51d5dceb9e6d2551f1c1")
+        // val test = node.getTransactionByHash("0x19c55de70d527a5c19dfcc3c07d991cdaf07fe52301a51d5dceb9e6d2551f1c1")
+        val test = node.getTransactionByHash("0x704336f3ee9ac6b6dffb7261e34dd2b9d515ff9436ebbbd0740e51e2da3b1ab9")
         println(test.actions.first().parameter)
         /*
         if (bc > BigDecimal.ZERO) {
@@ -55,7 +56,7 @@ class NodeTest {
 
     @Test
     fun testCreateContract() {
-        val node = Node("192.168.2.246", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
+        val node = Node("192.168.2.33", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
         val bytes = NodeTest::class.java.getResourceAsStream("/props.wasm").use { it.readBytes() }
         val result = node.createWasamContract(bytes)
         // 0xf238256a9fc1a599748f2de5d30c18c0f55c8359a4a62d43d4562801ffbbad72
