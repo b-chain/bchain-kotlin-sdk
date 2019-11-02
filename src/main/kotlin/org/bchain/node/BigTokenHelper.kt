@@ -1,6 +1,5 @@
 package org.bchain.node
 
-import org.bchain.node.model.TxArgument
 import org.bchain.node.model.TxParameter
 import org.bchain.node.serializer.AscByteArrayBigIntSerialization
 import java.math.BigDecimal
@@ -33,20 +32,11 @@ class BigTokenHelper(var btContract: String, val node: Node) {
         return node.transfer(*array, nonce = nonce, chainId = chainId)
     }
 
-    fun createTransferAction(toAddress: String, symbol: String, amount: BigInteger, memo: String, blockNumber: Long, expiryNumber: Int) = btContract to TxParameter("transfer", listOf(
-            TxArgument.address(toAddress),            // to
-            TxArgument.address(amount.toString()),        // amount
-            TxArgument.address(symbol),                 // symbol
-            TxArgument.address(memo),                 // memo
-            TxArgument.int64(blockNumber),                     // blkNumber
-            TxArgument.int32(expiryNumber)                   // expiry
-    ))
-
     fun balanceOf(coin: String, address: String): Pair<BigDecimal, Int> {
         val decimal = getDecimal(coin)
         return try {
             node.callAction(btContract,
-                    TxParameter("balanceOf", listOf(TxArgument.address(address), TxArgument.address(coin))), serializer = AscByteArrayBigIntSerialization)
+                    TxParameter("balanceOf", listOf(address.txArgument(), coin.txArgument())), serializer = AscByteArrayBigIntSerialization)
                     .first().divideDecimal(decimal)
         } catch (_: Exception) {
             BigDecimal.ZERO
@@ -54,7 +44,7 @@ class BigTokenHelper(var btContract: String, val node: Node) {
     }
 
     fun getDecimal(symbol: String) = try {
-        node.callAction(btContract, TxParameter("getDecimals", listOf(TxArgument.address(symbol))), serializer = AscByteArrayBigIntSerialization).first().toInt()
+        node.callAction(btContract, TxParameter("getDecimals", listOf(symbol.txArgument())), serializer = AscByteArrayBigIntSerialization).first().toInt()
     } catch (_: Exception) {
         0
     }
@@ -70,12 +60,12 @@ class BigTokenHelper(var btContract: String, val node: Node) {
     }
 
     private fun BigTokenTransferParameter.toTransferAction(blockNumber: Long, expiryNumber: Int) = btContract to TxParameter("transfer", listOf(
-            TxArgument.address(toAddress),            // to
-            TxArgument.address(amount.withDecimal(getDecimal(symbol)).toString()),        // amount
-            TxArgument.address(symbol),                 // symbol
-            TxArgument.address(memo),                 // memo
-            TxArgument.int64(blockNumber),                     // blkNumber
-            TxArgument.int32(expiryNumber)                   // expiry
+            toAddress.txArgument(),
+            amount.withDecimal(getDecimal(symbol)).toString().txArgument(),        // amount
+            symbol.txArgument(),                 // symbol
+            memo.txArgument(),                 // memo
+            blockNumber.txArgument(),                     // blkNumber
+            expiryNumber.txArgument()                   // expiry
     ))
 
     data class BigTokenTransferParameter(val toAddress: String, val symbol: String, val amount: BigDecimal, val memo: String)

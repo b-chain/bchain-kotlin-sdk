@@ -2,7 +2,11 @@ package org.bchain.node.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.bchain.node.binaryValue
+import org.bchain.node.mapValue
 import org.bchain.node.serializer.StringByteArraySerializer
+import org.bchain.node.stringValue
+import org.msgpack.value.MapValue
 
 @Serializable
 data class TxAction(@Serializable(StringByteArraySerializer::class) @SerialName("address") val contract: ByteArray = ByteArray(0),
@@ -26,4 +30,7 @@ data class TxAction(@Serializable(StringByteArraySerializer::class) @SerialName(
         return result
     }
 
+    fun valueMap(): MapValue = mapOf("Contract".stringValue() to contract.binaryValue(), "Params".stringValue() to params.binaryValue()).mapValue()
+
 }
+

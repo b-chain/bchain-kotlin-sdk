@@ -6,7 +6,6 @@ import kotlinx.serialization.internal.IntSerializer
 import kotlinx.serialization.internal.StringSerializer
 import net.consensys.cava.crypto.Hash
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.msgpack.core.MessagePack
 import org.msgpack.value.ValueFactory
 import java.math.BigInteger
 import java.security.*
@@ -35,7 +34,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         val bigIntegerTwo = 2.toBigInteger()
     }
 
-    private val messagePacker by lazy { MessagePack.newDefaultBufferPacker() }
+    // private val messagePacker by lazy { MessagePack.newDefaultBufferPacker() }
     private val requestUrl = "${if (host.contains(":/")) "" else "http://"}$host:$port"
 
     private lateinit var keyPair: SECP256K1.KeyPair
@@ -59,7 +58,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
     }
 
     fun createWasamContract(content: ByteArray, fee: BigDecimal = BigDecimal.ZERO, nonce: Long = -1, chainId: BigInteger = BigInteger.ONE): String {
-        val actions = mutableListOf(systemContractAddress to TxParameter.createContract(Contract("wasmre.WasmRE", content)))
+        val actions = mutableListOf(systemContractAddress to TxParameter.createContract(TxContract("wasmre.WasmRE", content)))
         if (fee > BigDecimal.ZERO) actions.add(0, bcContractAddress to TxParameter.bcTransferFee(toBcInteger(fee)))
         return transfer(*actions.toTypedArray(), nonce = nonce, chainId = chainId)
     }
@@ -96,7 +95,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         return "bchain_sendRawTransaction".invoke(StringSerializer, tx.toHex())
     }
 
-    fun getBcBalance(address: String = bchainAddress) = toBcDecimal(callAction(bcContractAddress, TxParameter("balenceOf", listOf(TxArgument.address(address))), serializer = StringChangeEndianBigIntSerialization).first())
+    fun getBcBalance(address: String = bchainAddress) = toBcDecimal(callAction(bcContractAddress, TxParameter("balenceOf", listOf(address.txArgument())), serializer = StringChangeEndianBigIntSerialization).first())
 
     fun <T> callAction(contractAddress: String, parameter: TxParameter, number: Long = -1, serializer: KSerializer<T>): List<T> = "bchain_actionCall".invoke(ArrayListSerializer(serializer), contractAddress.action(parameter), number.toBlockNumber())
 
@@ -122,6 +121,18 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
 
     fun getTransactionReceiptByHash(transactionHash: String): TransactionReceiptInfo = "bchain_getTransactionReceipt".invoke(TransactionReceiptInfo.serializer(), transactionHash)
 
+    fun toBcDecimal(value: BigInteger): BigDecimal = value.toBigDecimal().divide(bcDecimal)
+
+    fun toBcInteger(value: BigDecimal): BigInteger = value.multiply(bcDecimal).toBigInteger()
+
+    private fun txToPackArray(vararg actions: TxAction, nonce: Long, chainId: BigInteger) = serializeByMessagePack {
+        packValue(ValueFactory.newArray(
+                TxHeader(nonce).valueMap(),
+                actions.map { it.valueMap() }.arrayValue(),
+                chainId.bigintValue(),
+                0.intValue(), 0.intValue()))
+    }
+
     private fun <T> String.invoke(serializer: KSerializer<T>, vararg params: Any): T {
         val method = Method.serializer().stringify(Method(this@invoke, params.toList()))
         if (debugInfo) println("input: $method")
@@ -139,8 +150,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
         return MethodResult.serializer(serializer).parse(responseContent).tryResult()
     }
 
-    private fun SECP256K1.Signature.txToPackArray(vararg actions: TxAction, nonce: Long, chainId: BigInteger) = messagePacker.apply {
-        clear()
+    private fun SECP256K1.Signature.txToPackArray(vararg actions: TxAction, nonce: Long, chainId: BigInteger) = serializeByMessagePack {
         val data = mapOf(
                 "H".stringValue() to TxHeader(nonce).valueMap(),
                 "Acts".stringValue() to actions.map { it.valueMap() }.arrayValue(),
@@ -148,19 +158,8 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
                 "R".stringValue() to r().bigintValue(),
                 "S".stringValue() to s().bigintValue()).mapValue()
         packValue(mapOf("Data".stringValue() to data).mapValue())
-    }.toByteArray()
+    }
 
-    private fun txToPackArray(vararg actions: TxAction, nonce: Long, chainId: BigInteger) = messagePacker.apply {
-        clear()
-        packValue(ValueFactory.newArray(
-                TxHeader(nonce).valueMap(),
-                actions.map { it.valueMap() }.arrayValue(),
-                chainId.bigintValue(),
-                0.intValue(), 0.intValue()))
-    }.toByteArray()
-
-    fun toBcDecimal(value: BigInteger): BigDecimal = value.toBigDecimal().divide(bcDecimal)
-    fun toBcInteger(value: BigDecimal): BigInteger = value.multiply(bcDecimal).toBigInteger()
     private fun ByteArray.signHashed(pk: SECP256K1.KeyPair = keyPair) = SECP256K1.signHashed(this, pk)
     private fun ByteArray.sha3() = Hash.keccak256(this)
     private fun Long.toBlockNumber() = if (this >= 0) toHex() else "latest"

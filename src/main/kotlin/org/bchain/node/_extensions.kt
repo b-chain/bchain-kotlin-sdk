@@ -2,10 +2,11 @@ package org.bchain.node
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.bchain.node.model.*
 import org.bouncycastle.util.encoders.Hex
-import org.bchain.node.model.TxAction
-import org.bchain.node.model.TxHeader
-import org.bchain.node.model.TxParameter
+import org.msgpack.core.MessageBufferPacker
+import org.msgpack.core.MessagePack
+import org.msgpack.core.MessagePacker
 import org.msgpack.value.*
 import java.math.BigInteger
 import java.nio.ByteBuffer
@@ -28,15 +29,18 @@ fun String.hexToBytes(prefix: String? = "0x"): ByteArray {
     return (s.indices step 2).map { s.substring(it, it + 2).toInt(16).toByte() }.toByteArray()
 }
 
-fun String.action(parameter: TxParameter) = TxAction(toAddressBytes(), TxParameter.serializer().stringify(parameter).toByteArray())
+fun String.action(parameter: TxParameter) = TxAction(toAddressBytes(), serializeByMessagePack {
+    packString(parameter.functionName)
+    packArrayHeader(parameter.args.size)
+    parameter.args.forEach {
+        packInt(it.type)
+        packValue(it.value.binaryValue())
+    }
+})
 
 fun ByteArray.append0() = copyOf(size + 1)
 
 fun String.toByteArrayWith0() = toByteArray().append0()
-
-fun TxHeader.valueMap(): MapValue = mapOf("Nonce".stringValue() to nonce.intValue()).mapValue()
-
-fun TxAction.valueMap(): MapValue = mapOf("Contract".stringValue() to contract.binaryValue(), "Params".stringValue() to params.binaryValue()).mapValue()
 
 fun BigInteger.toCustomBigIntByteArray(): ByteArray {
     val array = toByteArray()
@@ -70,3 +74,14 @@ fun<T> KSerializer<T>.stringify(obj: T) = Json.stringify(this, obj)
 fun<T> KSerializer<T>.parse(content: String) = Json.nonstrict.parse(this, content)
 
 fun String.checkPrefix(prefix: String?) = if (prefix != null) prefix + this else this
+
+fun serializeByMessagePack(messagePacker: MessageBufferPacker = MessagePack.newDefaultBufferPacker(), block: MessagePacker.() -> Unit): ByteArray = messagePacker.use {
+    block(it)
+    it.toByteArray()
+}
+
+fun Int.txArgument() = TxArgument(TxArgumentType.Int32.type, ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(this).array())
+fun Long.txArgument() = TxArgument(TxArgumentType.Int64.type, ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(this).array())
+fun Float.txArgument() = TxArgument(TxArgumentType.Float32.type, ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(this).array())
+fun Double.txArgument() = TxArgument(TxArgumentType.Float64.type, ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(this).array())
+fun String.txArgument(with0: Boolean = true) = TxArgument(TxArgumentType.Address.type, if (with0) toByteArrayWith0() else toByteArray())

@@ -1,6 +1,10 @@
 package org.bchain.node.model
 
-import kotlinx.serialization.Serializable
+import org.bchain.node.intValue
+import org.bchain.node.mapValue
+import org.bchain.node.stringValue
+import org.msgpack.value.MapValue
 
-@Serializable
-data class TxHeader(val nonce: Long = 0)
+data class TxHeader(val nonce: Long = 0) {
+    fun valueMap(): MapValue = mapOf("Nonce".stringValue() to nonce.intValue()).mapValue()
+}

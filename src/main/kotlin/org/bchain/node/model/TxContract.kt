@@ -1,17 +1,15 @@
 package org.bchain.node.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import org.bchain.node.serializer.Base64ByteArraySerializer
+import org.bchain.node.binaryValue
+import org.bchain.node.serializeByMessagePack
 
-@Serializable
-data class Contract(@SerialName("inter_name") val name: String, @Serializable(Base64ByteArraySerializer::class) @SerialName("code") val code: ByteArray) {
+data class TxContract(val name: String, val code: ByteArray) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as Contract
+        other as TxContract
 
         if (name != other.name) return false
         if (!code.contentEquals(other.code)) return false
@@ -25,4 +23,12 @@ data class Contract(@SerialName("inter_name") val name: String, @Serializable(Ba
         return result
     }
 
+    fun txArgument() = TxArgument(TxArgumentType.Address.type, let {
+        serializeByMessagePack {
+            packString(it.name)
+            packValue(it.code.binaryValue())
+        }
+    })
+
 }
+

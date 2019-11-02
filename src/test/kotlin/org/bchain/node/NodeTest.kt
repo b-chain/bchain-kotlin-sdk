@@ -4,6 +4,7 @@ import org.bchain.node.model.TransactionInfo
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
+import java.math.BigDecimal
 
 @RunWith(JUnit4::class)
 class NodeTest {
@@ -33,12 +34,23 @@ class NodeTest {
 
     @Test
     fun testNode() {
-        val node = Node("127.0.0.1", privateKey = "1614b6882d3294498f0164e903c174d20225555b05ff09155fa88afd05c2ed3", debugInfo = true)
+        val node = Node("192.168.2.33", privateKey = "29ef98425764f0ed3eb129df5875de029659ce4d49fccc9988cf114b7238cd71", debugInfo = true)
         val topNumber = node.getBlockTopNumber()
+        /*
         val n = node.getBlockByNumber(304644)
         val d = n.transactions.first().actions.first().parameter.arguments.first().addressValue()
         println(d)
+         */
         assert(topNumber > 0)
+        val bc = node.getBcBalance()
+        println("${node.bchainAddress}:$bc")
+        val test = node.getTransactionByHash("0x19c55de70d527a5c19dfcc3c07d991cdaf07fe52301a51d5dceb9e6d2551f1c1")
+        println(test.actions.first().parameter)
+        /*
+        if (bc > BigDecimal.ZERO) {
+            println(node.transferBc("0x840bba84322becb61b75366a3c579d9d5f53cc3c", BigDecimal.ONE))
+        }
+         */
     }
 
     @Test
