@@ -84,4 +84,5 @@ fun Int.txArgument() = TxArgument(TxArgumentType.Int32.type, ByteBuffer.allocate
 fun Long.txArgument() = TxArgument(TxArgumentType.Int64.type, ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(this).array())
 fun Float.txArgument() = TxArgument(TxArgumentType.Float32.type, ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(this).array())
 fun Double.txArgument() = TxArgument(TxArgumentType.Float64.type, ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(this).array())
-fun String.txArgument(with0: Boolean = true) = TxArgument(TxArgumentType.Address.type, if (with0) toByteArrayWith0() else toByteArray())
+fun String.txArgument(with0: Boolean = true) = toByteArray().txArgument(with0)
+fun ByteArray.txArgument(with0: Boolean = true) = TxArgument(TxArgumentType.Address.type, if (with0) append0() else this)
