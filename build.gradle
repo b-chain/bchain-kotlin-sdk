@@ -1,7 +1,7 @@
 buildscript {
 
     ext {
-        kotlinVersion = '1.3.50'
+        kotlinVersion = '1.3.60'
     }
 
     repositories {
@@ -55,8 +55,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     implementation 'com.squareup.okhttp3:okhttp:4.2.2'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.62'
-    implementation 'org.msgpack:msgpack-core:0.8.18'
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.13.0'
+    implementation 'org.msgpack:msgpack-core:0.8.19'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0'
     implementation 'net.consensys.cava:cava-crypto:0.6.0'
     testImplementation 'junit:junit:4.13-beta-3'
 }
