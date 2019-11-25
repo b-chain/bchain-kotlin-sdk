@@ -66,7 +66,12 @@ class BigTokenHelper(var btContract: String, val node: Node) {
 
     private fun BigInteger.divideDecimal(decimal: Int): BigDecimal {
         val d = toString()
-        return "${d.substring(0, d.length - decimal)}.${d.substring(d.length - decimal)}".toBigDecimal()
+        val len = d.length - decimal
+        return (when {
+            len < 0 -> "0.${(0 until -len).joinToString("") { "0" }}$d"
+            len == 0 -> "0.$d"
+            else -> "${d.substring(0, len)}.${d.substring(len)}"
+        }).toBigDecimal()
     }
 
     private fun BigTokenTransferParameter.toTransferAction(blockNumber: Long, expiryNumber: Int) = btContract to TxParameter("transfer", listOf(
