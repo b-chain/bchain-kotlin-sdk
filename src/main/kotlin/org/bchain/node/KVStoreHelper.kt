@@ -31,9 +31,9 @@ class KVStoreHelper(var storeContract: String, val node: Node) {
                   fee: BigDecimal = BigDecimal.ZERO,
                   expiryNumber: Int = 100,
                   nonce: Long = -1,
-                  chainId: BigInteger = BigInteger.ONE) = set(key, content.toByteArray(), fee, expiryNumber, nonce, chainId)
+                  chainId: BigInteger = BigInteger.ONE) = set(key, content.toByteArray(Charsets.UTF_8), fee, expiryNumber, nonce, chainId)
 
-    fun getString(key: String) = get(key, StringByteArraySerializer).toString()
+    fun getString(key: String) = get(key, StringByteArraySerializer).toString(Charsets.UTF_8)
 
 }
 
