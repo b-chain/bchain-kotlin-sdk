@@ -55,6 +55,14 @@ class NodeTest {
     }
 
     @Test
+    fun testBalance() {
+        val node = Node("192.168.2.246", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
+        val bt = BigTokenHelper("0x6cfd090a741a12014fac9a65facd990b5e0af135", node)
+        val v = bt.balanceOf("KING", "0xccf2bd1134ab2b408cd59127d4cda89886849139")
+        println(v)
+    }
+
+    @Test
     fun testCreateContract() {
         val node = Node("192.168.2.33", privateKey = "7ea3b94a9113434ca0cb4d7c280390a4be2e6accb6340c89513111d7559d288b", debugInfo = true)
         val bytes = NodeTest::class.java.getResourceAsStream("/props.wasm").use { it.readBytes() }
