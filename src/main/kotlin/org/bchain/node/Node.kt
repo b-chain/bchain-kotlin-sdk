@@ -4,23 +4,25 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.internal.ArrayListSerializer
 import kotlinx.serialization.internal.IntSerializer
 import kotlinx.serialization.internal.StringSerializer
+import kotlinx.serialization.json.JsonObject
 import net.consensys.cava.crypto.Hash
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.msgpack.value.ValueFactory
 import java.math.BigInteger
 import java.security.*
 import net.consensys.cava.crypto.SECP256K1
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.bchain.node.model.*
 import org.bchain.node.serializer.StringChangeEndianBigIntSerialization
 import org.bchain.node.serializer.StringLongSerialization
+import java.io.Closeable
+import java.lang.Exception
 import java.lang.RuntimeException
 import java.math.BigDecimal
 
-class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = null, private var debugInfo: Boolean = false) {
+class Node(host: String = "127.0.0.1", port: Int = 8989, wsPort: Int = 8990, privateKey: String? = null, private var debugInfo: Boolean = false) {
 
     companion object {
         init {
@@ -36,6 +38,7 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
 
     // private val messagePacker by lazy { MessagePack.newDefaultBufferPacker() }
     private val requestUrl = "${if (host.contains(":/")) "" else "http://"}$host:$port"
+    private val requestWsUrl = "${if (host.contains(":/")) "" else "http://"}$host:$wsPort"
 
     private lateinit var keyPair: SECP256K1.KeyPair
 
@@ -44,7 +47,62 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
 
     private val httpClient by lazy { OkHttpClient.Builder().build() }
 
+    private val openingWebSockets = mutableMapOf<WebSocket, MutableMap<String, BlockEventListener>>()
+
     init { if (privateKey != null) updatePrivateKey(privateKey) }
+
+    fun createBlockEventListener(callback: SubscribeSuccessCallback? = null, event: SubscribeBlockInfoCallback) = createEventSubscribeListener("newHeads", subscribeSuccess = {
+        callback?.onSubscribeSuccess(it)
+    }) { event.onNewBlock(SubscribeBlockInfo.serializer().parse(it.toString())) }
+
+    fun createPendingEventListener(callback: SubscribeSuccessCallback? = null, event: SubscribeTransactionInfoCallback) = createEventSubscribeListener("newPendingTransactions", subscribeSuccess = {
+        callback?.onSubscribeSuccess(it)
+    }) { event.onNewTransaction(TransactionInfo.serializer().parse(it.toString())) }
+
+    fun createEventSubscribeListener(vararg subscribes: String, subscribeSuccess: (Closeable) -> Unit, process: (JsonObject) -> Unit): Closeable {
+        val webSocket = openingWebSockets.entries.firstOrNull()
+        val method = Method("bchain_subscribe", subscribes.toList())
+        val w = webSocket?.key?.apply { send(Method.serializer().stringify(method)) }
+                ?: httpClient.newWebSocket(Request.Builder().url(requestWsUrl).build(), object : WebSocketListener() {
+                    override fun onOpen(webSocket: WebSocket, response: Response) {
+                        super.onOpen(webSocket, response)
+                        webSocket.send(Method.serializer().stringify(method))
+                    }
+
+                    override fun onMessage(webSocket: WebSocket, text: String) {
+                        super.onMessage(webSocket, text)
+                        val id = try { MethodResult.serializer(StringSerializer).parse(text).tryResult() } catch (ignore: Exception) { null }
+                        if (id != null) {
+                            var map = openingWebSockets[webSocket]
+                            if (map == null) {
+                                map = mutableMapOf()
+                                openingWebSockets[webSocket] = map
+                            }
+                            val c = BlockEventListener(process, id, webSocket)
+                            map[id] = c
+                            subscribeSuccess(c)
+                        } else {
+                            val map = openingWebSockets[webSocket]
+                            if (map != null) {
+                                val result = SubscribeMethodResult.serializer().parse(text)
+                                map[result.params.subscription]?.process?.invoke(result.params.result)
+                            }
+                        }
+                    }
+
+                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        super.onClosing(webSocket, code, reason)
+                        openingWebSockets.remove(webSocket)
+                    }
+
+                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                        super.onFailure(webSocket, t, response)
+                        throw t
+                    }
+
+                })
+        return Closeable { w.cancel() }
+    }
 
     fun updatePrivateKey(key: String) {
         keyPair = SECP256K1.KeyPair.fromSecretKey(SECP256K1.SecretKey.fromInteger(key.toBigInteger(16)))
@@ -111,9 +169,13 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
 
     fun getBlockTopNumber(): Long = "bchain_blockNumber".invoke(StringLongSerialization)
 
-    fun getBlockByNumber(number: Long = -1, full: Boolean = true): BlockInfo = "bchain_getBlockByNumber".invoke(BlockInfo.serializer(), number.toBlockNumber(), full)
+    fun getBlockByNumber(number: Long = -1): BlockInfo = "bchain_getBlockByNumber".invoke(BlockInfo.serializer(), number.toBlockNumber(), true)
 
-    fun getBlockByHash(hash: String, full: Boolean = true): BlockInfo = "bchain_getBlockByHash".invoke(BlockInfo.serializer(), hash, full)
+    fun getSimpleBlockByNumber(number: Long = -1): SimpleBlockInfo = "bchain_getBlockByNumber".invoke(SimpleBlockInfo.serializer(), number.toBlockNumber(), false)
+
+    fun getBlockByHash(hash: String): BlockInfo = "bchain_getBlockByHash".invoke(BlockInfo.serializer(), hash, true)
+
+    fun getSimpleBlockByHash(hash: String): SimpleBlockInfo = "bchain_getBlockByHash".invoke(SimpleBlockInfo.serializer(), hash, false)
 
     fun getAccountNonce(address: String = bchainAddress, number: Long = -1): Long = "bchain_getAccountNonce".invoke(StringLongSerialization, address, number.toBlockNumber())
 
@@ -165,5 +227,29 @@ class Node(host: String = "127.0.0.1", port: Int = 8989, privateKey: String? = n
     private fun Long.toBlockNumber() = if (this >= 0) toHex() else "latest"
 
     data class BcTransferParameter(val toAddress: String, val amount: BigDecimal, val memo: String)
+
+    private inner class BlockEventListener(val process: (JsonObject) -> Unit, val id: String, val webSocket: WebSocket): Closeable {
+
+        override fun close() {
+            val map = openingWebSockets[webSocket]?.apply { remove(id) }
+            if (map == null || map.isEmpty()) {
+                webSocket.cancel()
+                openingWebSockets.remove(webSocket)
+            }
+        }
+
+    }
+
+    interface SubscribeSuccessCallback {
+        fun onSubscribeSuccess(subscribe: Closeable)
+    }
+
+    interface SubscribeBlockInfoCallback {
+        fun onNewBlock(info: SubscribeBlockInfo)
+    }
+
+    interface SubscribeTransactionInfoCallback {
+        fun onNewTransaction(info: TransactionInfo)
+    }
 
 }

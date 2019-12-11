@@ -8,10 +8,15 @@ import org.junit.runners.JUnit4
 class KVStoreTest {
 
     private val store by lazy {
-        KVStoreHelper("0x736eea55743b8182b6823aca9bd6ca358824c0da",
+        KVStoreHelper("0x157b4058372443db579f32a70131eb760f8397d8",
             Node("118.190.245.106", privateKey = "29ef98425764f0ed3eb129df5875de029659ce4d49fccc9988cf114b7238cd71", debugInfo = true))
     }
 
+    @Test
+    fun testBlockInfo() {
+        val r = store.node.getSimpleBlockByNumber(20)
+        println(r)
+    }
 
     @Test
     fun testCreateStore() {
@@ -23,21 +28,24 @@ class KVStoreTest {
 
     @Test
     fun testGold() {
-        val v = store.node.getTransactionReceiptByHash("0xea3d29cea7fef9e76d3fde988d4d5ff1c6140221cac7e27fc5fa2045715de4cd")
+        val v = store.node.getTransactionReceiptByHash("0xdfdff14664682382d394f41ad5d1ba273952e45f2eb495797e996f4b6c145b46")
         println(v)
     }
 
     @Test
     fun testStore() {
-        val v = store.setString("test2", """{"test":2}""")
+        val v = store.multipleSet(
+                listOf(
+                        "test1" to """{"test":1}""".toByteArray(Charsets.UTF_8),
+                        "test2" to """{"test":2}""".toByteArray(Charsets.UTF_8),
+                        "test3" to """{"test":3}""".toByteArray(Charsets.UTF_8)))
         println(v)
-       //  store.putString("test1", "")
     }
 
     @Test
     fun testRestore() {
-        val v = store.getString("test2")
-        println(v)
+        val keys = listOf("test1", "test2", "test3")
+        keys.forEach { println("$it = ${store.getString(it)}") }
     }
 
 }
